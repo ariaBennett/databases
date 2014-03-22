@@ -12,24 +12,31 @@ db.connect();
 //query ===================================================
 var makeQuery = function(query){
   var deferred = q.defer();
+  console.log('start making actual query', query);
   db.query(query, function(err, data){
-    deferred.resolve(err, data);
+    console.log('back from db');
+    console.log('resolving', err, data);
+    deferred.resolve(data);
   });
   return deferred.promise;
 };
 
 var getId = function(table, name) {
+  console.log('start getId', table);
   var query = [
     'SELECT',
       'id',
       'FROM ' + table,
-      'WHERE name = ' + name
+      'WHERE name = "' + name + '"'
   ].join(' ');
   return makeQuery(query)
-    .then(function(err, data){
+    .then(function(data){
+      console.log('finished getting id', data);
       if (data.length !== 0){
+        console.log('data');
         return data;
       } else {
+        console.log('more promises');
         return makeQuery([
           'INSERT INTO ' + table,
             '(name)',
@@ -70,6 +77,8 @@ var getId = function(table, name) {
 
 //interface ===============================================
 exports.find = function(conditions, room, cb){
+  conditions = conditions.query || '';
+  console.log('query condition', conditions);
   var query = [
     'SELECT ',
       'users.name as username, ',
@@ -78,33 +87,39 @@ exports.find = function(conditions, room, cb){
       'messages.createdAt as createdAt, ',
       'messages.updatedAt as updatedAt ',
       'FROM users, rooms, messages ',
-      'WHERE users.id = messages.id ',
-      'AND rooms.id = messages.id ',
-      'AND rooms.name = ' + room,
+      'WHERE users.id = messages.user_id ',
+      'AND rooms.id = messages.room_id ',
+      'AND rooms.name = "' + room + '" ',
       conditions
   ].join('');
   //
   makeQuery(query)
-    .then(function(err, data){
+    .then(function(data){
       cb(data);
     });
 };
 
 exports.save = function(json, room, cb){
   var userId, roomId;
-  q.when(getId('users', json.username), function(err, data){
-    userId = data.id;
-    q.when(getId('rooms', json.roomname), function(err, data){
-      roomId = data.id;
+  console.log('start save');
+  q.when(getId('users', json.username), function(data){
+    userId = data[0].id;
+    console.log('got user id', data);
+    q.when(getId('rooms', room), function(data){
+      roomId = data[0].id;
+      console.log('got room id', data);
     }).then(function(){
+      console.log('start making query', userId, roomId, json.text);
       var query = [
         'INSERT INTO messages',
         '(user_id, room_id, content)',
         'VALUES ('+ userId + ', ' + roomId + ', "'+ json.text + '")'
-      ];
+      ].join('');
+      console.log('sending out query');
       makeQuery(query)
-        .then(function(err){
-          cb(err);
+        .then(function(data){
+          console.log('end making query');
+          cb('?'); //TODO
         });
     });
   });

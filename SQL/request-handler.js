@@ -29,6 +29,9 @@ var respondText = function(res, data){
 };
 
 var respondJSON = function(res, data){
+  console.log('respond json', JSON.stringify({
+    results: data
+  }));
   res.writeHead(200, makeHeader({
     'content-type' : 'application/json'
   }));
@@ -38,6 +41,7 @@ var respondJSON = function(res, data){
 };
 
 var respondPost = function(res, err){
+  console.log('respond post');
   res.writeHead(err? 401:201, makeHeader({
     'content-type' : 'text/plain'
   }));
@@ -58,7 +62,8 @@ var postClasses = function(req, res, room){
     body += data;
   });
   req.on('end', function(){
-    db.save(body, room, function(err){
+    console.log('post data read', querystring.parse(body), room);
+    db.save(querystring.parse(body), room, function(err){
       respondPost(res, err);
     });
   });
@@ -73,7 +78,7 @@ var getClasses = function(req, res, room){
 
 //=========================================================
 exports.handler = function(req, res) {
-  //console.log('Serving request type ' + req.method + ' for url ' + req.url);
+  console.log('Serving request type ' + req.method + ' for url ' + req.url);
   var parsedUrl = url.parse(req.url);
   var urlTokens = parsedUrl.pathname.split('/').slice(1);
   if (req.method === 'OPTIONS'){
